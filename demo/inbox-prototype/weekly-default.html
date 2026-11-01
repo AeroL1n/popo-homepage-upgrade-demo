@@ -304,6 +304,7 @@ body.embed-mode .card::-webkit-scrollbar { width: 0; height: 0; }
 .message-heading { display: flex; min-height: 20px; align-items: center; gap: 4px; font-size: 14px; line-height: normal; white-space: nowrap; }
 .message-heading strong { color: #0A0F02; font-weight: 400; letter-spacing: 0; }
 .message-title { display: inline-flex; min-width: 0; align-items: center; gap: 4px; overflow: hidden; color: #0A0F02; text-overflow: ellipsis; white-space: nowrap; }
+.message-title:not(.message-title--boost) > strong { display: block; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .message-title--boost strong { display: inline-flex; min-width: 0; align-items: center; font-weight: 400; }
 .message-boost-prefix, .message-boost-suffix { flex: none; }
 .message-work-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -353,7 +354,24 @@ body.embed-mode .card::-webkit-scrollbar { width: 0; height: 0; }
 .message-card--comment .message-action { position: absolute; left: 0; bottom: 0; margin-top: 0; }
 .message-card--comment .message-time { position: absolute; right: 0; bottom: 0; }
 .message-card--compact { height: 72px; }
-.message-card--compact .message-time { position: absolute; right: 0; top: 28px; }
+.message-card--compact .message-copy { height: 17px; margin-top: 8px; padding-right: 48px; font-size: 12px; line-height: 17px; }
+.message-card--compact .message-time { position: absolute; right: 0; top: 28px; height: 17px; font-size: 12px; line-height: 17px; }
+@media (max-width: 400px) {
+  body { padding-inline: 8px; }
+  .card,
+  .card.message-mode { width: 100%; }
+  .weekly-view,
+  .message-view,
+  .banner,
+  .work,
+  .message-filters,
+  .message-card { width: 100%; }
+  .banner { background-size: 100% 80px; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric { width: 100%; background-size: 100% 100%; }
+  .foot { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .foot .box .ic { width: 100%; }
+}
 .message-card:hover {
   transform: translateY(-1px);
   filter: none;
