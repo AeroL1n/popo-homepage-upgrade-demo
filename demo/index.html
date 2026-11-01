@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#ffffff" />
     <title>popo</title>
     <link rel="icon" type="image/svg+xml" sizes="any" href="./assets/home/popo-avatar.svg?v=1" />
-    <link rel="stylesheet" href="./styles.css?v=20260912cy" />
+    <link rel="stylesheet" href="./styles.css?v=20261030ah" />
     <link rel="stylesheet" href="./toolbar-final.css?v=20260809aa" />
     <script>
       document.addEventListener('pointerover', function (event) {
@@ -56,15 +56,34 @@
       </div>
 
       <header class="home-topbar">
-        <div class="sticky-aurora-layer" aria-hidden="true">
-          <video class="sticky-aurora-video" src="./assets/home/home-bg.mp4" poster="./assets/home/home-bg-poster.jpg" autoplay muted loop playsinline></video>
-        </div>
         <div class="topbar-inner">
-          <button class="brand-button" type="button" aria-label="popo 首页">
-            <img src="./assets/home/logo.png" alt="popo" />
-          </button>
+          <div class="brand-menu" data-brand-menu>
+            <button class="brand-button" id="brandMenuButton" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="brandMenuPanel" aria-label="popo 菜单">
+              <img src="./assets/home/logo.png" alt="popo" />
+              <svg class="brand-caret" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="brand-menu-panel" id="brandMenuPanel" role="menu" aria-labelledby="brandMenuButton" hidden>
+              <button class="brand-menu-item" type="button" role="menuitem" data-brand-action="plaza">
+                <img class="brand-menu-icon" src="./assets/home/popo-avatar.svg" alt="" aria-hidden="true" />
+                <span>泡泡乐园</span>
+              </button>
+              <!-- 占位入口：暂不跳转，点击无反馈 -->
+              <button class="brand-menu-item" type="button" role="menuitem" data-brand-action="placeholder">
+                <svg class="brand-menu-icon" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3.5" width="14" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3 7.5h14M7.5 7.5v9" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                <span>原型能力</span>
+              </button>
+              <button class="brand-menu-item" type="button" role="menuitem" data-brand-action="placeholder">
+                <svg class="brand-menu-icon" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 13.5v3M7 16.5h6M7.5 10.5V9M10 10.5V7M12.5 10.5V8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span>体验slides能力</span>
+              </button>
+              <!-- 重播开屏动画入口暂时隐藏，后续需要时去掉 hidden -->
+              <button class="brand-menu-item" type="button" role="menuitem" data-brand-action="replay" hidden>
+                <span>重播开屏动画</span>
+              </button>
+            </div>
+          </div>
 
-          <div class="topbar-search" data-search-container="compact"></div>
+          <div class="topbar-search" data-search-container="hero"></div>
 
           <div class="topbar-actions">
             <button class="publish-button" id="publishButton" type="button">
@@ -73,17 +92,20 @@
               <img class="corner corner-bottom" src="./assets/icons/corner-bracket.svg" alt="" />
               <span class="publish-new-badge" aria-label="新功能">NEW</span>
             </button>
-            <div class="topbar-avatar-area avatar-mailbox-root">
-              <button class="avatar-button topbar-avatar-link" id="profileButton" type="button" title="个人中心" aria-label="个人中心">
-                <span class="topbar-avatar-glow topbar-avatar-glow--playing" aria-hidden="true"><span class="topbar-avatar-glow__halo topbar-avatar-glow__halo--white"></span><span class="topbar-avatar-glow__halo topbar-avatar-glow__halo--pink"></span><span class="topbar-avatar-glow__halo topbar-avatar-glow__halo--yellow"></span></span>
-                <span class="avatar-status-ring" aria-hidden="true"></span>
-                <img src="./assets/avatars/linyuhang.jpg" alt="linyuhang" />
-                <span class="avatar-status-badge" aria-label="28 条未读消息">28</span>
+            <div class="topbar-message-area avatar-mailbox-root">
+              <button class="message-button" type="button" aria-label="消息，28 条未读" aria-haspopup="dialog">
+                <svg class="message-button-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.75c-3.6 0-6.25 2.5-6.25 5.9v3.1L2.6 14.1c-.3.5.06 1.15.64 1.15h13.52c.58 0 .94-.65.64-1.15l-1.15-2.35v-3.1c0-3.4-2.65-5.9-6.25-5.9Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.9 17.1a2.3 2.3 0 0 0 4.2 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                <span class="message-badge" aria-hidden="true">28</span>
               </button>
               <span class="avatar-mailbox-hover-bridge" aria-hidden="true"></span>
               <div class="avatar-mailbox-popover" aria-label="消息通知">
-                <iframe src="./inbox-prototype/weekly-default.html?embed=1&amp;v=20260912bj" title="消息通知" loading="eager"></iframe>
+                <iframe src="./inbox-prototype/weekly-default.html?embed=1&amp;v=20261016ab" title="消息通知" loading="eager"></iframe>
               </div>
+            </div>
+            <div class="topbar-avatar-area">
+              <button class="avatar-button topbar-avatar-link" id="profileButton" type="button" title="个人中心" aria-label="个人中心">
+                <img src="./assets/avatars/linyuhang.jpg" alt="linyuhang" />
+              </button>
               <div class="topbar-avatar-guide" data-avatar-guide role="status" hidden>
                 <img class="topbar-avatar-guide__bubble" src="./assets/home/avatar-guide/personal-profile-guide.svg" alt="前往个人中心去查看作品、发布作品吧" />
                 <button class="topbar-avatar-guide__close" type="button" data-close-avatar-guide aria-label="关闭个人中心引导"></button>
@@ -95,12 +117,38 @@
 
       <main class="page-main">
         <section class="hero-search" aria-labelledby="pageTitle">
-          <h1 id="pageTitle">每个作品都值得冒泡</h1>
-          <div data-search-container="hero"></div>
+          <h1 id="pageTitle" class="visually-hidden">每个作品都值得冒泡</h1>
         </section>
 
-        <section class="works-panel" aria-label="作品列表">
-          <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="作品分类"></div>
+        <section class="home-section home-collections" aria-labelledby="collectionsTitle">
+          <div class="home-section-head">
+            <h2 class="home-section-title" id="collectionsTitle">本周精选</h2>
+          </div>
+          <div class="collections-viewport">
+            <button class="collections-arrow collections-arrow-prev" type="button" data-collections-scroll="-1" aria-label="上一组合集" hidden></button>
+            <div class="collections-track" id="collectionsTrack"></div>
+            <button class="collections-arrow collections-arrow-next" type="button" data-collections-scroll="1" aria-label="下一组合集" hidden></button>
+          </div>
+        </section>
+        <section class="home-section home-hot-search" aria-labelledby="hotSearchTitle">
+          <div class="home-section-head">
+            <h2 class="home-section-title" id="hotSearchTitle">热门搜索</h2>
+          </div>
+          <div class="hot-search-rows" id="hotSearchRows"></div>
+        </section>
+        <section class="works-panel" aria-labelledby="worksTitle">
+          <h2 class="home-section-title works-panel-title" id="worksTitle">探索作品</h2>
+          <div class="works-toolbar">
+            <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="作品分类"></div>
+            <div class="sort-menu" data-sort-menu>
+              <button class="sort-button" id="sortMenuButton" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="sortMenuPanel">
+                <svg class="sort-button-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M4.5 8h7M6.5 11.5h3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span data-sort-label>综合推荐</span>
+                <svg class="sort-caret" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <div class="sort-menu-panel" id="sortMenuPanel" role="menu" aria-labelledby="sortMenuButton" hidden></div>
+            </div>
+          </div>
           <div class="works-region" aria-live="polite">
             <div class="masonry" id="worksGrid"></div>
             <div class="empty-state" id="emptyState" hidden><img class="empty-bubble" src="./assets/home/empty-bubble.png" alt="" /><p>这里还没有泡泡</p></div>
@@ -216,13 +264,39 @@
         </button>
         <div class="plaza-stage">
           <img class="plaza-platform" src="./assets/plaza/platform@4x.png" alt="" aria-hidden="true" />
-          <img class="plaza-feature plaza-feature-wish" src="./assets/plaza/wishing-pool.svg" alt="许愿池：许下想法，共建未来" />
-          <img class="plaza-feature plaza-feature-new" src="./assets/plaza/new-arrivals.svg" alt="冒泡上新：发现最新功能，抢先体验" />
-          <img class="plaza-feature plaza-feature-qa" src="./assets/plaza/q-and-a.svg" alt="有问必答：提问与解答，互帮互助" />
-          <img class="plaza-feature plaza-feature-group" src="./assets/plaza/group-guide.svg" alt="进群冒泡，群号 13001998" />
-          <button class="plaza-hotspot plaza-hotspot-wish" type="button" data-plaza-action="wish" aria-label="进入许愿池"></button>
-          <button class="plaza-hotspot plaza-hotspot-new" type="button" data-plaza-action="new" aria-label="进入冒泡上新"></button>
-          <button class="plaza-hotspot plaza-hotspot-qa" type="button" data-plaza-action="qa" aria-label="进入有问必答"></button>
+          <button class="plaza-entry plaza-entry-wish" type="button" data-plaza-action="wish" aria-label="进入许愿池">
+            <img class="plaza-entry-part plaza-entry-base" src="./assets/plaza/wishing-pool-ip@4x.png" alt="" aria-hidden="true" />
+            <span class="plaza-entry-part plaza-entry-sign" aria-hidden="true">
+              <img src="./assets/plaza/wishing-pool-sign.svg" alt="" />
+              <span class="plaza-sign-copy plaza-sign-copy-wish"><strong>许愿池</strong><span>许下想法</span><span>共建未来</span></span>
+              <span class="plaza-sign-arrow plaza-sign-arrow-wish"><img class="plaza-arrow-ring" src="./assets/plaza/arrow-ring.svg" alt="" /><img class="plaza-arrow-pointer" src="./assets/plaza/arrow-pointer.svg" alt="" /></span>
+            </span>
+          </button>
+          <button class="plaza-entry plaza-entry-qa" type="button" data-plaza-action="qa" aria-label="进入有问必答">
+            <img class="plaza-entry-part plaza-entry-shadow" src="./assets/plaza/q-and-a-shadow.svg" alt="" aria-hidden="true" />
+            <img class="plaza-entry-part plaza-entry-base" src="./assets/plaza/q-and-a-base.svg" alt="" aria-hidden="true" />
+            <img class="plaza-entry-part plaza-entry-ip" src="./assets/plaza/q-and-a-ip.svg" alt="" aria-hidden="true" />
+            <span class="plaza-entry-part plaza-entry-sign" aria-hidden="true">
+              <img src="./assets/plaza/q-and-a-sign.svg" alt="" />
+              <span class="plaza-sign-copy plaza-sign-copy-qa"><strong>有问必答</strong><span>提问与解答</span><span>互帮互助</span></span>
+              <span class="plaza-sign-arrow plaza-sign-arrow-qa"><img class="plaza-arrow-ring" src="./assets/plaza/arrow-ring.svg" alt="" /><img class="plaza-arrow-pointer" src="./assets/plaza/arrow-pointer.svg" alt="" /></span>
+            </span>
+          </button>
+          <button class="plaza-entry plaza-entry-new" type="button" data-plaza-action="new" aria-label="进入冒泡上新">
+            <img class="plaza-entry-part plaza-entry-shadow" src="./assets/plaza/new-arrivals-shadow.svg" alt="" aria-hidden="true" />
+            <img class="plaza-entry-part plaza-entry-base" src="./assets/plaza/new-arrivals-base.svg" alt="" aria-hidden="true" />
+            <img class="plaza-entry-part plaza-entry-ip" src="./assets/plaza/new-arrivals-ip.svg" alt="" aria-hidden="true" />
+            <span class="plaza-entry-part plaza-entry-sign" aria-hidden="true">
+              <img src="./assets/plaza/new-arrivals-sign.svg" alt="" />
+              <span class="plaza-sign-copy plaza-sign-copy-new"><strong>冒泡上新</strong><span>发现最新功能</span><span>抢先体验</span></span>
+              <span class="plaza-sign-arrow plaza-sign-arrow-new"><img class="plaza-arrow-ring" src="./assets/plaza/arrow-ring.svg" alt="" /><img class="plaza-arrow-pointer" src="./assets/plaza/arrow-pointer.svg" alt="" /></span>
+            </span>
+          </button>
+          <img class="plaza-feature plaza-feature-group-shadow" src="./assets/plaza/group-guide-shadow.svg" alt="" aria-hidden="true" />
+          <img class="plaza-feature plaza-feature-group" src="./assets/plaza/group-guide-blank.svg" alt="" aria-hidden="true" />
+          <span class="plaza-group-copy plaza-group-copy-title" aria-hidden="true">进群冒泡</span>
+          <span class="plaza-group-copy plaza-group-copy-number" aria-hidden="true">13001998</span>
+          <span class="plaza-group-arrow" aria-hidden="true"><img class="plaza-arrow-ring" src="./assets/plaza/arrow-ring.svg" alt="" /><img class="plaza-arrow-pointer" src="./assets/plaza/arrow-pointer.svg" alt="" /></span>
           <button class="plaza-hotspot plaza-hotspot-group" type="button" data-plaza-action="group" aria-label="进群冒泡，群号 13001998"></button>
         </div>
       </section>
@@ -230,6 +304,6 @@
 
     <div class="home-action-tooltip" id="homeActionTooltip" role="tooltip" data-side="top" aria-hidden="true"></div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="./app.js?v=20260912cy"></script>
+    <script src="./app.js?v=20261030ah"></script>
   </body>
 </html>

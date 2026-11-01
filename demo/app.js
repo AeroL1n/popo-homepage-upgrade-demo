@@ -10,9 +10,9 @@ const categories = [
 ];
 
 const works = [
-  { id: '7188', title: '小红书舆情监控·百度地图', owner: 'nova', likes: 0, category: 'report' },
+  { id: '7188', title: '小红书舆情监控·百度地图', owner: 'nova', likes: 0, category: 'report', pinned: true },
   { id: '2453', title: '反馈分析综合报告-问题', owner: 'arjun', likes: 0, category: 'report' },
-  { id: '8611', title: '合规链路监控报告 - 8775', owner: 'matteo', likes: 0, category: 'team' },
+  { id: '8611', title: '合规链路监控报告 - 8775', owner: 'matteo', likes: 0, category: 'team', pinned: true },
   { id: '8495', title: '百度教育 · 开学加油季', owner: 'arc', likes: 2, category: 'inspiration' },
   { id: '8700', title: '监控报警配置统计看板', owner: 'evelyn', likes: 0, category: 'tool' },
   { id: '8879', title: '爱奇艺高优_2026_01_15标注报告', owner: 'ben', likes: 0, category: 'report' },
@@ -78,6 +78,21 @@ const state = {
   openShareId: null,
   homeScrollY: 0,
   liked: new Map(),
+  sort: 'recommend',
+};
+
+// 作品流排序。publishedAt 为 demo mock 发布日期，仅用于「最新发布」。
+const SORT_OPTIONS = [
+  { key: 'recommend', label: '综合推荐' },
+  { key: 'latest', label: '最新发布' },
+  { key: 'likes', label: '最多打气' },
+];
+const WORK_PUBLISHED_AT = {
+  '6968': '2026-10-29', '4597': '2026-10-28', '8874': '2026-10-27', '3547': '2026-10-26',
+  '7188': '2026-10-25', '2229': '2026-10-24', '781': '2026-10-23', '8495': '2026-10-22',
+  '6206': '2026-10-21', '2453': '2026-10-20', '8700': '2026-10-19', '4100': '2026-10-18',
+  '198': '2026-10-17', '5100': '2026-10-16', '8611': '2026-10-15', '2436': '2026-10-14',
+  '261': '2026-10-13', '2995': '2026-10-12', '8879': '2026-10-11', '2230': '2026-10-10',
 };
 
 const grid = document.querySelector('#worksGrid');
@@ -202,7 +217,7 @@ function replayHomeFirstVisitExperience() {
 
   if (guide) guide.hidden = true;
   if (glow) glow.hidden = false;
-  document.documentElement.classList.remove('home-is-sticky');
+  document.documentElement.dataset.nav = 'top';
   window.scrollTo({ top: 0, behavior: 'auto' });
 
   if (!initHomeOnboarding()) initAvatarGuide();
@@ -227,11 +242,30 @@ function demoCoverSrc(work, variant = 'portrait') {
 
 function visibleWorks() {
   const query = state.query.trim().toLocaleLowerCase('zh-CN');
-  return works.filter((work) => {
+  const filtered = works.filter((work) => {
     const categoryMatch = state.activeCategory === 'trending' || work.category === state.activeCategory;
     const queryMatch = !query || `${work.title} ${work.owner}`.toLocaleLowerCase('zh-CN').includes(query);
     return categoryMatch && queryMatch;
   });
+  return sortWorks(filtered);
+}
+
+function workLikeCount(work) {
+  return state.liked.get(work.id)?.count ?? work.likes;
+}
+
+function sortWorks(list) {
+  // 综合推荐保持原顺序（含置顶）；其他排序不再强制置顶。
+  if (state.sort === 'latest') {
+    return [...list].sort((a, b) => (WORK_PUBLISHED_AT[b.id] ?? '').localeCompare(WORK_PUBLISHED_AT[a.id] ?? ''));
+  }
+  if (state.sort === 'likes') {
+    // 切换到该排序时记下打气数快照，之后点打气不让卡片当场跳位。
+    if (!state.likesSnapshot) state.likesSnapshot = new Map(works.map((work) => [work.id, workLikeCount(work)]));
+    const snap = state.likesSnapshot;
+    return [...list].sort((a, b) => (snap.get(b.id) ?? 0) - (snap.get(a.id) ?? 0));
+  }
+  return list;
 }
 
 function refreshVisibleWorks() {
@@ -259,6 +293,18 @@ function renderTabs() {
     .join('');
 }
 
+const PIN_BADGE_ASSETS = {
+  violet: './assets/home/pinned-badge@4x.png?v=20261015ab',
+  mint: './assets/home/pinned-badge-mint@4x.png?v=20261014ab',
+};
+
+function pinBadgeMarkup(work) {
+  if (!work.pinned) return '';
+  const variant = typeof work.pinned === 'string' ? work.pinned : 'violet';
+  const src = PIN_BADGE_ASSETS[variant] || PIN_BADGE_ASSETS.violet;
+  return `<img class="work-pinned-badge" src="${src}" alt="置顶" />`;
+}
+
 function renderCard(work) {
   const likeState = state.liked.get(work.id);
   const liked = likeState?.liked ?? false;
@@ -268,12 +314,13 @@ function renderCard(work) {
   return `
     <article class="work-card home-work-card${shareOpen ? ' share-open home-work-card-share-popover-open' : ''}" data-work-id="${work.id}">
       <div class="work-card-inner">
-        <button class="work-link" type="button" data-open-work="${work.id}" aria-label="${work.title}">
+        <a class="work-link" href="#/works/${work.id}" target="_blank" rel="noopener" aria-label="${safeText(work.title)}（新标签页打开）">
           <div class="cover-frame" style="aspect-ratio:${stableAspect(work)}">
             <img src="${demoCoverSrc(work)}" alt="${work.title}" loading="lazy" />
+            ${pinBadgeMarkup(work)}
           </div>
           <p class="work-title">${work.title}</p>
-        </button>
+        </a>
         <div class="work-meta">
           <div class="work-owner">
             <img src="./assets/avatars/${work.owner}.jpg" alt="${work.owner}" loading="lazy" />
@@ -415,16 +462,7 @@ function createSearch(variant) {
       ${
         variant === 'hero'
           ? `<img class="search-left-character" src="./assets/home/search-character-green.png" alt="" aria-hidden="true" />
-             <div class="search-ip-group">
-               <button class="search-entry-button" type="button" aria-label="来逛逛泡泡">
-                 <span class="search-entry-copy">
-                   <span>来逛逛泡泡</span>
-                   <img class="search-entry-arrow" src="./assets/home/right-small.svg" alt="" aria-hidden="true" />
-                 </span>
-               </button>
-               <img class="search-ip search-ip-one" src="./assets/home/search-character-one.png" alt="" aria-hidden="true" />
-               <img class="search-ip search-ip-two" src="./assets/home/search-character-two.png" alt="" aria-hidden="true" />
-             </div>`
+             <img class="search-duo" src="./assets/home/search-duo.svg" alt="" aria-hidden="true" draggable="false" />`
           : ''
       }
       <label class="search-control">
@@ -521,7 +559,7 @@ function closePlaza() {
   if (!modal || modal.hidden) return;
   modal.hidden = true;
   document.body.classList.remove('plaza-open');
-  document.querySelector('.search-entry-button')?.focus({ preventScroll: true });
+  document.querySelector('.brand-button')?.focus({ preventScroll: true });
 }
 
 function openWork(workId) {
@@ -531,8 +569,164 @@ function openWork(workId) {
   navigateRoute(`/works/${work.id}`);
 }
 
+// 首页「本周精选」合集：作品从现有静态作品中随机抽取，仅用于演示。
+// 合集作品固定分配（首页与新标签打开的专区页需要一致，不能随机）。
+const HOME_COLLECTIONS = [
+  { key: 'play', title: '玩一会', accent: '#ffcbe9', workIds: ['6968', '6206', '198', '8495', '3547', '4597', '8874', '781'] },
+  { key: 'tech', title: '技术研读', accent: '#dafca9', workIds: ['4100', '2230', '8611', '2229', '2995', '8700', '2453', '261'] },
+  { key: 'report', title: '报告与灵感', accent: '#f5eb66', workIds: ['7188', '2436', '8879', '5100', '261', '2453', '8611', '4597'] },
+  { key: 'tool', title: '顺手用的工具', accent: '#cdeffd', workIds: ['8700', '8874', '2995', '4597', '781', '3547', '5100', '2230'] },
+];
+const COLLECTION_INTROS = {
+  play: '工作间隙玩一会，这些小游戏和互动作品最受大家欢迎。',
+  tech: '评测、方案对比和链路监控，适合慢慢读的技术向作品。',
+  report: '把数据讲成故事的报告，顺便捎上几份灵感。',
+  tool: '打开就能用的看板和小工具，收藏起来随手取用。',
+};
+const COLLECTION_WEEK_RANGE = '10.27–11.02';
+
+// 展开后显示 5 张作品封面，第 6 个位置为「查看全部」。
+const COLLECTION_PREVIEW_COUNT = 5;
+
+function collectionWorks(collection) {
+  return collection.workIds.map((id) => works.find((work) => work.id === id)).filter(Boolean);
+}
+
+const HOT_SEARCH_TERMS = [
+  '数据看板', '舆情监控', '反馈分析', '评测对比', '会议纪要', '书单',
+  '视频生成', '海洋', '覆盖率', '标注报告', '方案对比', '合规链路',
+  '开学', '吃瓜', '群山', '内容数据', '报警配置', '小程序',
+];
+
+const collectionsTrack = document.querySelector('#collectionsTrack');
+const hotSearchRows = document.querySelector('#hotSearchRows');
+
+function renderCollections() {
+  if (!collectionsTrack) return;
+  collectionsTrack.innerHTML = HOME_COLLECTIONS.map((collection) => {
+    const all = collectionWorks(collection);
+    const covers = all
+      .slice(0, COLLECTION_PREVIEW_COUNT)
+      .map(
+        (work, index) => `
+          <a class="collection-cover" href="#/works/${work.id}" target="_blank" rel="noopener" aria-label="${safeText(work.title)}（新标签页打开）" style="--cover-index:${index}"${index >= 3 ? ' data-extra-cover' : ''}>
+            <img src="${demoCoverSrc(work)}" alt="" loading="lazy" draggable="false" />
+            <span class="collection-cover-title">${safeText(work.title)}</span>
+          </a>`,
+      )
+      .join('');
+    const viewAll = `
+          <a class="collection-cover collection-view-all" href="#/collections/${collection.key}" target="_blank" rel="noopener" aria-label="查看全部${collection.title}作品（新标签页打开）" style="--cover-index:${COLLECTION_PREVIEW_COUNT}" data-extra-cover>
+            <svg class="collection-view-all-arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4.5h6v6M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <strong>查看全部</strong>
+            <span>共 ${all.length} 个作品</span>
+          </a>`;
+    return `
+      <article class="collection-card" data-collection="${collection.key}" style="--collection-accent:${collection.accent}" aria-label="${collection.title}合集">
+        <div class="collection-covers">${covers}${viewAll}</div>
+        <div class="collection-info">
+          <h3>${collection.title}</h3>
+          <p>@popo<span aria-hidden="true"> · </span>${all.length} 个作品</p>
+        </div>
+      </article>`;
+  }).join('');
+  updateCollectionArrows();
+}
+
+function updateCollectionArrows() {
+  if (!collectionsTrack) return;
+  const maxScroll = collectionsTrack.scrollWidth - collectionsTrack.clientWidth;
+  const prev = document.querySelector('[data-collections-scroll="-1"]');
+  const next = document.querySelector('[data-collections-scroll="1"]');
+  if (prev) prev.hidden = collectionsTrack.scrollLeft <= 4;
+  if (next) next.hidden = collectionsTrack.scrollLeft >= maxScroll - 4;
+}
+
+function renderHotSearch() {
+  if (!hotSearchRows) return;
+  const half = Math.ceil(HOT_SEARCH_TERMS.length / 2);
+  const rows = [HOT_SEARCH_TERMS.slice(0, half), HOT_SEARCH_TERMS.slice(half)];
+  hotSearchRows.innerHTML = rows
+    .map((terms, rowIndex) => {
+      const pills = terms
+        .map((term) => {
+          const match = works.find((work) => work.title.includes(term)) ?? works[0];
+          return `<button class="hot-search-pill" type="button" data-hot-search="${safeText(term)}">
+              <img src="${demoCoverSrc(match)}" alt="" loading="lazy" />
+              <span>“${safeText(term)}”</span>
+            </button>`;
+        })
+        .join('');
+      // 每组内放两遍关键词，保证一组宽度大于宽屏视口；两组首尾相接，平移 50% 即可无缝循环。
+      // 第一排向右，第二排向左。
+      const groupPills = pills + pills;
+      const hiddenPills = groupPills.replaceAll('<button ', '<button tabindex="-1" ');
+      const direction = rowIndex === 0 ? 'right' : 'left';
+      return `
+        <div class="hot-search-row" data-direction="${direction}">
+          <div class="hot-search-track">
+            <div class="hot-search-group">${groupPills}</div>
+            <div class="hot-search-group" aria-hidden="true">${hiddenPills}</div>
+          </div>
+        </div>`;
+    })
+    .join('');
+}
+
+function applyHotSearch(term) {
+  state.activeCategory = 'trending';
+  renderTabs();
+  submitSearch(term);
+  document.querySelector('.works-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+collectionsTrack?.addEventListener('scroll', updateCollectionArrows, { passive: true });
+window.addEventListener('resize', updateCollectionArrows, { passive: true });
+
+// 触屏没有悬停：第一次点击先展开合集，展开后再点击封面进入详情。
+collectionsTrack?.addEventListener(
+  'click',
+  (event) => {
+    const card = event.target.closest('.collection-card');
+    if (!card || !window.matchMedia('(hover: none)').matches) return;
+    if (card.classList.contains('is-expanded')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    collectionsTrack.querySelectorAll('.collection-card.is-expanded').forEach((item) => item.classList.remove('is-expanded'));
+    card.classList.add('is-expanded');
+  },
+  true,
+);
+
+document.addEventListener('click', (event) => {
+  const arrow = event.target.closest('[data-collections-scroll]');
+  if (arrow && collectionsTrack) {
+    const direction = Number(arrow.dataset.collectionsScroll);
+    collectionsTrack.scrollBy({ left: direction * collectionsTrack.clientWidth * 0.8, behavior: 'smooth' });
+    return;
+  }
+  const pill = event.target.closest('[data-hot-search]');
+  if (pill) applyHotSearch(pill.dataset.hotSearch);
+});
+
+// 热门搜索按固定速度（px/s）滚动，避免内容越长滚得越快。
+const HOT_SEARCH_SPEEDS = [18, 15];
+function syncHotSearchSpeed() {
+  hotSearchRows?.querySelectorAll('.hot-search-row').forEach((row, index) => {
+    const group = row.querySelector('.hot-search-group');
+    const track = row.querySelector('.hot-search-track');
+    if (!group || !track) return;
+    const width = group.getBoundingClientRect().width;
+    if (width > 0) track.style.setProperty('--marquee-duration', `${Math.round(width / HOT_SEARCH_SPEEDS[index % 2])}s`);
+  });
+}
+
+renderCollections();
+renderHotSearch();
+syncHotSearchSpeed();
+document.fonts?.ready.then(syncHotSearchSpeed);
+
 createSearch('hero');
-createSearch('compact');
 renderTabs();
 renderWorks();
 
@@ -602,12 +796,6 @@ document.addEventListener('keydown', (event) => {
 });
 
 document.addEventListener('click', async (event) => {
-  const searchEntryButton = event.target.closest('.search-entry-button');
-  if (searchEntryButton) {
-    openPlaza();
-    return;
-  }
-
   if (event.target.closest('[data-close-plaza]') || event.target.matches('.plaza-backdrop')) {
     closePlaza();
     return;
@@ -768,20 +956,195 @@ document.querySelector('[data-bubble-other]')?.addEventListener('click', () => {
   openModal(document.querySelector('#legacyPublishModal'));
 });
 document.querySelector('#profileButton').addEventListener('click', () => navigateRoute('/profile'));
-document.querySelector('.brand-button').addEventListener('click', () => {
-  if (currentRoute() !== '/') {
-    navigateRoute('/');
+// 左上角 logo 下拉菜单（首页与内页共用，事件委托）：点击 logo 不再重播开屏动画。
+function brandMenuParts(menu) {
+  return { button: menu.querySelector('.brand-button'), panel: menu.querySelector('.brand-menu-panel') };
+}
+
+function setBrandMenuOpen(open, { focus = false, menu = null } = {}) {
+  const menus = menu ? [menu] : [...document.querySelectorAll('[data-brand-menu]')];
+  menus.forEach((item) => {
+    const { button, panel } = brandMenuParts(item);
+    if (!panel || !button) return;
+    panel.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    item.classList.toggle('is-open', open);
+    if (open && focus) panel.querySelector('.brand-menu-item:not([hidden])')?.focus();
+  });
+}
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-brand-menu] .brand-button');
+  if (button) {
+    const menu = button.closest('[data-brand-menu]');
+    const willOpen = brandMenuParts(menu).panel.hidden;
+    setBrandMenuOpen(false);
+    if (willOpen) setBrandMenuOpen(true, { menu });
     return;
   }
-  replayHomeFirstVisitExperience();
+  const actionItem = event.target.closest('[data-brand-action]');
+  if (!actionItem) return;
+  const action = actionItem.dataset.brandAction;
+  if (action === 'placeholder') return; // 占位入口：点击无任何反馈
+  setBrandMenuOpen(false);
+  if (action === 'plaza') {
+    if (currentRoute() !== '/') navigateRoute('/');
+    openPlaza();
+  } else if (action === 'replay') {
+    if (currentRoute() !== '/') navigateRoute('/');
+    replayHomeFirstVisitExperience();
+  }
 });
+
+document.addEventListener('keydown', (event) => {
+  const menu = event.target.closest?.('[data-brand-menu]');
+  if (event.key === 'Escape') {
+    const open = document.querySelector('[data-brand-menu].is-open');
+    if (!open) return;
+    setBrandMenuOpen(false);
+    brandMenuParts(open).button.focus();
+    return;
+  }
+  if (!menu) return;
+  const { button, panel } = brandMenuParts(menu);
+  if (event.target === button && event.key === 'ArrowDown') {
+    event.preventDefault();
+    setBrandMenuOpen(true, { menu, focus: true });
+    return;
+  }
+  if (!panel.contains(event.target)) return;
+  const items = [...panel.querySelectorAll('.brand-menu-item:not([hidden])')];
+  const index = items.indexOf(document.activeElement);
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    items[(index + step + items.length) % items.length]?.focus();
+  } else if (event.key === 'Tab') {
+    setBrandMenuOpen(false);
+  }
+});
+
+document.addEventListener('pointerdown', (event) => {
+  document.querySelectorAll('[data-brand-menu].is-open').forEach((menu) => {
+    if (!menu.contains(event.target)) setBrandMenuOpen(false, { menu });
+  });
+});
+
+// 作品流排序下拉
+const sortMenu = document.querySelector('[data-sort-menu]');
+const sortMenuButton = document.querySelector('#sortMenuButton');
+const sortMenuPanel = document.querySelector('#sortMenuPanel');
+
+function renderSortMenu() {
+  if (!sortMenuPanel) return;
+  sortMenuPanel.innerHTML = SORT_OPTIONS.map((option) => `
+    <button class="sort-menu-item" type="button" role="menuitemradio" aria-checked="${state.sort === option.key}" data-sort="${option.key}">
+      <span>${option.label}</span>
+      <svg class="sort-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>`).join('');
+  const current = SORT_OPTIONS.find((option) => option.key === state.sort);
+  document.querySelector('[data-sort-label]').textContent = current.label;
+  sortMenuButton.setAttribute('aria-label', `排序：${current.label}`);
+}
+
+function setSortMenuOpen(open, { focus = false } = {}) {
+  if (!sortMenuPanel) return;
+  sortMenuPanel.hidden = !open;
+  sortMenuButton.setAttribute('aria-expanded', String(open));
+  sortMenu.classList.toggle('is-open', open);
+  if (open && focus) (sortMenuPanel.querySelector('[aria-checked="true"]') ?? sortMenuPanel.querySelector('.sort-menu-item'))?.focus();
+}
+
+sortMenuButton?.addEventListener('click', () => setSortMenuOpen(sortMenuPanel.hidden));
+sortMenuButton?.addEventListener('keydown', (event) => {
+  if (event.key !== 'ArrowDown') return;
+  event.preventDefault();
+  setSortMenuOpen(true, { focus: true });
+});
+sortMenuPanel?.addEventListener('keydown', (event) => {
+  const items = [...sortMenuPanel.querySelectorAll('.sort-menu-item')];
+  const index = items.indexOf(document.activeElement);
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    items[(index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
+  } else if (event.key === 'Escape') {
+    setSortMenuOpen(false);
+    sortMenuButton.focus();
+  } else if (event.key === 'Tab') {
+    setSortMenuOpen(false);
+  }
+});
+sortMenuPanel?.addEventListener('click', (event) => {
+  const key = event.target.closest('[data-sort]')?.dataset.sort;
+  if (!key) return;
+  setSortMenuOpen(false);
+  sortMenuButton.focus({ preventScroll: true });
+  if (key === state.sort) return;
+  state.sort = key;
+  state.likesSnapshot = null;
+  state.visibleCount = 12;
+  state.openShareId = null;
+  renderSortMenu();
+  renderWorks();
+});
+document.addEventListener('pointerdown', (event) => {
+  if (sortMenuPanel && !sortMenuPanel.hidden && !sortMenu.contains(event.target)) setSortMenuOpen(false);
+});
+renderSortMenu();
+
 document.querySelector('#backToTop').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 document.querySelector('#refreshWorks').addEventListener('click', refreshVisibleWorks);
+
+// 首页导航栏三态：top 顶部完整导航；hidden 下滑全部隐藏；search 上滑仅显示搜索框。
+const NAV_TOP_THRESHOLD = 80;
+const NAV_DIRECTION_THRESHOLD = 8;
+let navLastScrollY = window.scrollY;
+let navFrame = 0;
+
+function setNavState(next) {
+  const root = document.documentElement;
+  if (root.dataset.nav === next) return;
+  root.dataset.nav = next;
+  if (next !== 'top') {
+    setBrandMenuOpen(false);
+    hideHomeActionTooltip();
+  }
+}
+
+function updateNavSearchShift() {
+  // 窄屏时搜索框在导航栏第二行，上滑态需要把第一行移出视口，只露出搜索框。
+  const search = document.querySelector('.topbar-search');
+  const shift = search && search.offsetTop > 30 ? search.offsetTop - 10 : 0;
+  document.documentElement.style.setProperty('--nav-search-shift', `${shift}px`);
+}
+
+function updateNavState() {
+  navFrame = 0;
+  const y = window.scrollY;
+  if (document.querySelector('.home-page')?.hidden || y <= NAV_TOP_THRESHOLD) {
+    setNavState('top');
+    navLastScrollY = y;
+    return;
+  }
+  const delta = y - navLastScrollY;
+  if (Math.abs(delta) < NAV_DIRECTION_THRESHOLD) return;
+  const typing = document.activeElement?.closest?.('.topbar-search');
+  setNavState(delta > 0 && !typing ? 'hidden' : 'search');
+  navLastScrollY = y;
+}
+
+function requestNavStateUpdate() {
+  if (!navFrame) navFrame = window.requestAnimationFrame(updateNavState);
+}
+
+document.documentElement.dataset.nav = window.scrollY > NAV_TOP_THRESHOLD ? 'search' : 'top';
+updateNavSearchShift();
+window.addEventListener('resize', updateNavSearchShift, { passive: true });
 
 window.addEventListener(
   'scroll',
   () => {
-    document.documentElement.classList.toggle('home-is-sticky', window.scrollY > 360);
+    requestNavStateUpdate();
     document.querySelector('#backToTop').classList.toggle('visible', window.scrollY > window.innerHeight * 1.25);
   },
   { passive: true },
@@ -1060,20 +1423,25 @@ function safeText(value) {
 function pageTopbar({ onColor = false } = {}) {
   return `
     <header class="page-topbar${onColor ? ' on-color' : ''}">
-      <button class="page-brand" type="button" data-route="/" aria-label="popo 首页">
-        <img src="./assets/home/logo.png" alt="popo" />
+      <button class="page-home-button" type="button" data-route="/" title="返回首页" aria-label="返回 popo 首页">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 9 10 3.5 16.5 9v7a1 1 0 0 1-1 1h-3.5v-4.5h-4V17H4.5a1 1 0 0 1-1-1V9Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
       </button>
       <div class="page-actions">
         <button class="publish-button" type="button" data-open-publish><img class="corner corner-top" src="./assets/icons/corner-bracket.svg" alt="" /><span class="publish-button-label">发个泡泡</span><img class="corner corner-bottom" src="./assets/icons/corner-bracket.svg" alt="" /><span class="publish-new-badge" aria-label="新功能">NEW</span></button>
-        <div class="topbar-avatar-area avatar-mailbox-root">
-          <button class="page-avatar" type="button" data-route="/profile" title="个人中心" aria-label="个人中心">
-            <span class="avatar-status-ring" aria-hidden="true"></span>
-            <img src="${demoUser.avatar}" alt="${demoUser.username}" />
-            <span class="avatar-status-badge" aria-label="28 条未读消息">28</span>
+        <div class="topbar-message-area avatar-mailbox-root">
+          <button class="message-button" type="button" aria-label="消息，28 条未读" aria-haspopup="dialog">
+            <svg class="message-button-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.75c-3.6 0-6.25 2.5-6.25 5.9v3.1L2.6 14.1c-.3.5.06 1.15.64 1.15h13.52c.58 0 .94-.65.64-1.15l-1.15-2.35v-3.1c0-3.4-2.65-5.9-6.25-5.9Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.9 17.1a2.3 2.3 0 0 0 4.2 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <span class="message-badge" aria-hidden="true">28</span>
           </button>
+          <span class="avatar-mailbox-hover-bridge" aria-hidden="true"></span>
           <div class="avatar-mailbox-popover" aria-label="消息通知">
             <iframe src="./inbox-prototype/weekly-default.html?embed=1&amp;v=20260912bj" title="消息通知" loading="eager"></iframe>
           </div>
+        </div>
+        <div class="topbar-avatar-area">
+          <button class="page-avatar" type="button" data-route="/profile" title="个人中心" aria-label="个人中心">
+            <img src="${demoUser.avatar}" alt="${demoUser.username}" />
+          </button>
         </div>
       </div>
     </header>
@@ -1504,7 +1872,7 @@ function renderRoute() {
     modal.hidden = true;
   });
   document.body.classList.remove('modal-open');
-  document.documentElement.classList.remove('home-is-sticky');
+  document.documentElement.dataset.nav = 'top';
 
   if (route === '/') {
     pendingHomeScrollY = shouldRestoreHomeScroll ? state.homeScrollY : null;
@@ -1522,6 +1890,7 @@ function renderRoute() {
     routePage.hidden = false;
     routePage.innerHTML = routeMarkup(route);
     if (route === '/profile') requestAnimationFrame(initProfileVisibilityIndicator);
+    if (route.startsWith('/collections/')) requestAnimationFrame(initCollectionTimeline);
   }
 
   if (!shouldRestoreHomeScroll) window.scrollTo({ top: 0, behavior: 'auto' });
@@ -1542,11 +1911,328 @@ function routeMarkup(route) {
   const workMatch = route.match(/^\/works\/([^/]+)$/);
   if (workMatch) return workPreviewMarkup(workMatch[1]);
 
+  const collectionMatch = route.match(/^\/collections\/([^/]+)$/);
+  if (collectionMatch) return collectionPageMarkup(collectionMatch[1]);
+
   const profileMatch = route.match(/^\/profile\/([^/]+)$/);
   if (profileMatch) return publicProfileMarkup(profileMatch[1]);
 
   return notFoundMarkup();
 }
+
+// ===== 合集专区页：参考 FWA 的中轴时间线编排，保持 popo 风格 =====
+// mock 浏览量（不规则分布，用于「最多浏览」排序）
+const WORK_VIEW_COUNTS = {
+  '7188': 1268, '2453': 342, '8611': 905, '8495': 1532, '8700': 418, '8879': 276, '261': 611,
+  '8874': 1984, '6968': 2410, '4100': 387, '2436': 529, '5100': 744, '2995': 233, '2230': 468,
+  '781': 1120, '6206': 1876, '198': 655, '3547': 3120, '2229': 301, '4597': 812,
+};
+const CATEGORY_LABELS = Object.fromEntries(categories.map((item) => [item.key, item.label]));
+const COLLECTION_SORTS = [
+  { key: 'editor', label: '编辑推荐' },
+  { key: 'likes', label: '最多打气' },
+  { key: 'views', label: '最多浏览' },
+];
+const collectionUi = { sort: 'editor', likesSnapshot: null };
+
+function workViewCount(work) {
+  return WORK_VIEW_COUNTS[work.id] ?? 0;
+}
+
+function formatCount(value) {
+  return value >= 1000 ? `${(value / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(value);
+}
+
+function relativeDays(dateText) {
+  const days = Math.max(0, Math.round((new Date('2026-10-30') - new Date(dateText)) / 86400000));
+  if (days === 0) return '今天';
+  if (days === 1) return '昨天';
+  return `${days} 天前`;
+}
+
+function sortedCollectionWorks(collection) {
+  const list = collectionWorks(collection);
+  if (collectionUi.sort === 'likes') {
+    if (!collectionUi.likesSnapshot) collectionUi.likesSnapshot = new Map(list.map((work) => [work.id, workLikeCount(work)]));
+    const snap = collectionUi.likesSnapshot;
+    return [...list].sort((a, b) => (snap.get(b.id) ?? 0) - (snap.get(a.id) ?? 0));
+  }
+  if (collectionUi.sort === 'views') return [...list].sort((a, b) => workViewCount(b) - workViewCount(a));
+  return list;
+}
+
+function collectionMarkerMarkup(work, index) {
+  const rank = String(index + 1).padStart(2, '0');
+  if (collectionUi.sort === 'editor') {
+    return `<strong>No.${rank}</strong><small>${(WORK_PUBLISHED_AT[work.id] ?? '').slice(5).replace('-', '.')}</small>`;
+  }
+  const value = collectionUi.sort === 'likes' ? `${workLikeCount(work)} 打气` : `${formatCount(workViewCount(work))} 浏览`;
+  return `<strong>TOP ${index + 1}</strong><small>${value}</small>`;
+}
+
+function collectionEntryMarkup(work, index, collection) {
+  const side = index % 2 === 0 ? 'left' : 'right';
+  const likeState = state.liked.get(work.id);
+  const liked = likeState?.liked ?? false;
+  const active = collectionUi.sort;
+  return `
+    <li class="ct-entry ct-entry-${side}${index < 3 && active !== 'editor' ? ' is-top' : ''}" data-ct-entry="${work.id}" style="--entry-index:${index}">
+      <div class="ct-marker" aria-hidden="true">${collectionMarkerMarkup(work, index)}</div>
+      <span class="ct-dot" aria-hidden="true"></span>
+      <article class="ct-card">
+        <a class="ct-card-link" href="#/works/${work.id}" target="_blank" rel="noopener" aria-label="${safeText(work.title)}（新标签页打开）">
+          <span class="ct-cover">
+            <img src="${demoCoverSrc(work, 'landscape')}" alt="" loading="lazy" draggable="false" />
+            <span class="ct-shine" aria-hidden="true"></span>
+            <span class="ct-badge"><img src="./assets/home/popo-avatar.svg" alt="" />本周精选</span>
+          </span>
+          <span class="ct-copy">
+            <span class="ct-category">${safeText(CATEGORY_LABELS[work.category] ?? '作品')}</span>
+            <span class="ct-title">${safeText(work.title)}</span>
+          </span>
+        </a>
+        <div class="ct-meta">
+          <span class="ct-owner"><img src="./assets/avatars/${work.owner}.jpg" alt="" loading="lazy" />${safeText(work.owner)}</span>
+          <button class="ct-like${liked ? ' liked' : ''}" type="button" data-ct-like="${work.id}" aria-pressed="${liked}" aria-label="${liked ? '取消打气' : '给泡泡打气'}">
+            <img class="home-action-icon-default" src="./assets/icons/home-like.svg" alt="" /><img class="home-action-icon-active" src="./assets/icons/home-like-active.svg" alt="" />
+          </button>
+        </div>
+      </article>
+      <dl class="ct-stats">
+        <div class="${active === 'likes' ? 'is-active' : ''}"><dt>打气</dt><dd>${workLikeCount(work)}</dd></div>
+        <div class="${active === 'views' ? 'is-active' : ''}"><dt>浏览</dt><dd>${formatCount(workViewCount(work))}</dd></div>
+        <div><dt>发布</dt><dd>${relativeDays(WORK_PUBLISHED_AT[work.id] ?? '2026-10-30')}</dd></div>
+      </dl>
+    </li>`;
+}
+
+function collectionCoverStackMarkup(collection) {
+  return collectionWorks(collection).slice(0, 3).map((work) => `
+    <a class="ch-cover" href="#/works/${work.id}" target="_blank" rel="noopener" aria-label="${safeText(work.title)}（新标签页打开）">
+      <img src="${demoCoverSrc(work)}" alt="" draggable="false" />
+      <span class="ch-cover-title">${safeText(work.title)}</span>
+    </a>`).join('');
+}
+
+function collectionMiniCardMarkup(collection) {
+  const covers = collectionWorks(collection).slice(0, 3).map((work) => `<img src="${demoCoverSrc(work)}" alt="" loading="lazy" draggable="false" />`).join('');
+  return `
+    <a class="cm-card" href="#/collections/${collection.key}" style="--collection-accent:${collection.accent}" aria-label="查看${collection.title}合集">
+      <span class="cm-covers">${covers}</span>
+      <span class="cm-info"><strong>${collection.title}</strong><small>${collectionWorks(collection).length} 个作品</small></span>
+    </a>`;
+}
+
+function collectionPageMarkup(key) {
+  const collection = HOME_COLLECTIONS.find((item) => item.key === key);
+  if (!collection) return notFoundMarkup('合集不存在', '这个合集可能已下线或链接有误。');
+  document.title = `${collection.title} · popo`;
+  if (collectionUi.key !== key) Object.assign(collectionUi, { key, sort: 'editor', likesSnapshot: null });
+  const all = collectionWorks(collection);
+  const totalLikes = all.reduce((sum, work) => sum + workLikeCount(work), 0);
+  const totalViews = all.reduce((sum, work) => sum + workViewCount(work), 0);
+  const others = HOME_COLLECTIONS.filter((item) => item.key !== key);
+  return `
+    <div class="collection-page ct-page" style="--collection-accent:${collection.accent}" data-collection-page="${collection.key}">
+      ${pageTopbar()}
+      <header class="ch-head">
+        <div class="ch-copy">
+          <p class="ch-kicker">本周精选合集 · ${COLLECTION_WEEK_RANGE}</p>
+          <h1>${safeText(collection.title)}</h1>
+          <p class="ch-intro">${safeText(COLLECTION_INTROS[collection.key] ?? '')}</p>
+          <p class="ch-summary"><span>${all.length} 个作品</span><span aria-hidden="true">·</span><span>共 <b data-ch-likes>${totalLikes}</b> 次打气</span><span aria-hidden="true">·</span><span>${formatCount(totalViews)} 次浏览</span></p>
+          <nav class="ch-switch" aria-label="切换合集">
+            ${HOME_COLLECTIONS.map((item) => `<a class="ch-switch-item${item.key === key ? ' is-active' : ''}" href="#/collections/${item.key}" style="--collection-accent:${item.accent}"${item.key === key ? ' aria-current="page"' : ''}>${item.title}</a>`).join('')}
+          </nav>
+        </div>
+        <div class="ch-visual">
+          <button class="ch-share" type="button" data-collection-share="${collection.key}">
+            <img src="./assets/icons/home-share.svg" alt="" aria-hidden="true" />分享合集
+          </button>
+          <div class="ch-stack">${collectionCoverStackMarkup(collection)}</div>
+        </div>
+      </header>
+      <section class="ct-section" aria-label="${collection.title}作品">
+        <div class="ct-toolbar">
+          <div class="ct-sort" role="radiogroup" aria-label="作品排序">
+            ${COLLECTION_SORTS.map((option) => `<button type="button" role="radio" aria-checked="${collectionUi.sort === option.key}" data-ct-sort="${option.key}">${option.label}</button>`).join('')}
+            <span class="ct-sort-thumb" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="ct-timeline">
+          <div class="ct-axis" aria-hidden="true"><span class="ct-axis-fill"></span><span class="ct-axis-bubble"></span></div>
+          <ol class="ct-list" data-ct-list="${collection.key}">${sortedCollectionWorks(collection).map((work, index) => collectionEntryMarkup(work, index, collection)).join('')}</ol>
+          <div class="ct-end">
+            <span class="ct-end-bubble" aria-hidden="true"><img src="./assets/home/popo-avatar.svg" alt="" /></span>
+            <p>看完了，本周 ${all.length} 个作品</p>
+          </div>
+        </div>
+      </section>
+      <section class="cm-section" aria-labelledby="moreCollectionsTitle">
+        <h2 id="moreCollectionsTitle">再逛逛其他合集</h2>
+        <div class="cm-grid">${others.map(collectionMiniCardMarkup).join('')}</div>
+      </section>
+    </div>
+  `;
+}
+
+const ctReduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let ctObserver = null;
+let ctScrollFrame = 0;
+
+function initCollectionTimeline() {
+  if (!document.querySelector('[data-collection-page]')) return;
+  updateCollectionSortThumb();
+  observeCollectionEntries();
+  updateCollectionAxis();
+}
+
+function observeCollectionEntries({ instant = false } = {}) {
+  ctObserver?.disconnect();
+  const entries = document.querySelectorAll('.ct-entry');
+  if (instant || ctReduceMotion() || !('IntersectionObserver' in window)) {
+    entries.forEach((entry) => entry.classList.add('is-visible'));
+    return;
+  }
+  ctObserver = new IntersectionObserver((items) => {
+    items.forEach((item) => {
+      if (!item.isIntersecting) return;
+      item.target.classList.add('is-visible');
+      ctObserver.unobserve(item.target);
+    });
+  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.12 });
+  entries.forEach((entry) => ctObserver.observe(entry));
+}
+
+// 中轴进度：以视口中线为准，填色 + 泡泡跟随；离中线最近的作品编号高亮。
+function updateCollectionAxis() {
+  ctScrollFrame = 0;
+  const timeline = document.querySelector('.ct-timeline');
+  if (!timeline) return;
+  const axis = timeline.querySelector('.ct-axis');
+  const rect = axis.getBoundingClientRect();
+  const focusY = window.innerHeight * 0.5;
+  const progress = Math.min(1, Math.max(0, (focusY - rect.top) / Math.max(1, rect.height)));
+  timeline.style.setProperty('--ct-progress', progress.toFixed(4));
+  let current = null;
+  let best = Infinity;
+  timeline.querySelectorAll('.ct-entry').forEach((entry) => {
+    const marker = entry.querySelector('.ct-marker').getBoundingClientRect();
+    const distance = Math.abs(marker.top + marker.height / 2 - focusY);
+    if (distance < best) { best = distance; current = entry; }
+  });
+  timeline.querySelectorAll('.ct-entry.is-current').forEach((entry) => { if (entry !== current) entry.classList.remove('is-current'); });
+  if (progress > 0 && current) current.classList.add('is-current');
+}
+
+window.addEventListener('scroll', () => {
+  if (!ctScrollFrame && document.querySelector('.ct-timeline')) ctScrollFrame = window.requestAnimationFrame(updateCollectionAxis);
+}, { passive: true });
+window.addEventListener('resize', () => {
+  if (document.querySelector('.ct-timeline')) { updateCollectionSortThumb(); updateCollectionAxis(); }
+}, { passive: true });
+
+function updateCollectionSortThumb() {
+  const group = document.querySelector('.ct-sort');
+  const active = group?.querySelector('[aria-checked="true"]');
+  const thumb = group?.querySelector('.ct-sort-thumb');
+  if (!active || !thumb) return;
+  thumb.style.width = `${active.offsetWidth}px`;
+  thumb.style.transform = `translateX(${active.offsetLeft - 4}px)`;
+}
+
+// 排序：FLIP 动画，卡片从旧位置移动到新位置。
+function applyCollectionSort(key) {
+  const list = document.querySelector('[data-ct-list]');
+  const collection = HOME_COLLECTIONS.find((item) => item.key === list?.dataset.ctList);
+  if (!list || !collection || collectionUi.sort === key) return;
+  const before = new Map([...list.querySelectorAll('.ct-entry')].map((entry) => [entry.dataset.ctEntry, entry.querySelector('.ct-card').getBoundingClientRect()]));
+  collectionUi.sort = key;
+  collectionUi.likesSnapshot = null;
+  list.innerHTML = sortedCollectionWorks(collection).map((work, index) => collectionEntryMarkup(work, index, collection)).join('');
+  document.querySelectorAll('[data-ct-sort]').forEach((button) => button.setAttribute('aria-checked', String(button.dataset.ctSort === key)));
+  updateCollectionSortThumb();
+  observeCollectionEntries({ instant: true });
+  if (!ctReduceMotion()) {
+    list.querySelectorAll('.ct-entry').forEach((entry, index) => {
+      const card = entry.querySelector('.ct-card');
+      const prev = before.get(entry.dataset.ctEntry);
+      if (!prev) return;
+      const next = card.getBoundingClientRect();
+      const dx = prev.left - next.left;
+      const dy = prev.top - next.top;
+      card.animate(
+        [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
+        { duration: 620, delay: index * 30, easing: 'cubic-bezier(.22, 1, .36, 1)', fill: 'backwards' },
+      );
+      entry.querySelector('.ct-marker').animate(
+        [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 360, delay: 240 + index * 30, easing: 'ease-out', fill: 'backwards' },
+      );
+    });
+  }
+  updateCollectionAxis();
+}
+
+function toggleCollectionLike(id) {
+  const work = works.find((item) => item.id === id);
+  if (!work) return;
+  const current = state.liked.get(id) ?? { liked: false, count: work.likes };
+  state.liked.set(id, { liked: !current.liked, count: current.count + (current.liked ? -1 : 1) });
+  const entry = document.querySelector(`[data-ct-entry="${id}"]`);
+  const liked = !current.liked;
+  const button = entry?.querySelector('[data-ct-like]');
+  button?.classList.toggle('liked', liked);
+  button?.setAttribute('aria-pressed', String(liked));
+  button?.setAttribute('aria-label', liked ? '取消打气' : '给泡泡打气');
+  const likeCell = entry?.querySelector('.ct-stats div:first-child dd');
+  if (likeCell) likeCell.textContent = String(workLikeCount(work));
+  const page = document.querySelector('[data-collection-page]');
+  const collection = HOME_COLLECTIONS.find((item) => item.key === page?.dataset.collectionPage);
+  const total = document.querySelector('[data-ch-likes]');
+  if (collection && total) total.textContent = String(collectionWorks(collection).reduce((sum, item) => sum + workLikeCount(item), 0));
+}
+
+document.addEventListener('click', async (event) => {
+  const sortButton = event.target.closest('[data-ct-sort]');
+  if (sortButton) {
+    applyCollectionSort(sortButton.dataset.ctSort);
+    return;
+  }
+  const likeButton = event.target.closest('[data-ct-like]');
+  if (likeButton) {
+    toggleCollectionLike(likeButton.dataset.ctLike);
+    return;
+  }
+  const shareButton = event.target.closest('[data-collection-share]');
+  if (shareButton) {
+    const url = `${window.location.origin}${window.location.pathname}#/collections/${shareButton.dataset.collectionShare}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('合集链接已复制');
+    } catch {
+      showToast('复制失败，请重试');
+    }
+  }
+});
+
+// 悬停：卡片跟随指针轻微 3D 倾斜，封面上光泽跟随。
+document.addEventListener('pointermove', (event) => {
+  const card = event.target.closest?.('.ct-card');
+  if (!card || event.pointerType !== 'mouse' || ctReduceMotion()) return;
+  const rect = card.getBoundingClientRect();
+  const x = (event.clientX - rect.left) / rect.width;
+  const y = (event.clientY - rect.top) / rect.height;
+  card.style.setProperty('--ry', `${((x - 0.5) * 7).toFixed(2)}deg`);
+  card.style.setProperty('--rx', `${((0.5 - y) * 6).toFixed(2)}deg`);
+  card.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`);
+  card.style.setProperty('--my', `${(y * 100).toFixed(1)}%`);
+});
+document.addEventListener('pointerout', (event) => {
+  const card = event.target.closest?.('.ct-card');
+  if (!card || card.contains(event.relatedTarget)) return;
+  ['--rx', '--ry'].forEach((name) => card.style.setProperty(name, '0deg'));
+});
 
 function profileCardMarkup(work, { editable = true } = {}) {
   const liked = state.liked.get(work.id);
@@ -1935,7 +2621,7 @@ function workToolbarMarkup(work, { liked, count, commentCount, theme }) {
       <div class="pop-widget-avatar"><button type="button" data-route="/profile/${safeText(work.owner)}"><img src="./assets/avatars/${work.owner}.jpg" alt="${safeText(work.owner)}" /></button><span title="${safeText(work.owner)}">${safeText(work.owner)}</span></div>
       <div class="pop-widget-buttons">
         <button class="pop-widget-btn pop-widget-comment" type="button" data-widget-comments data-active="false" aria-label="评论" aria-pressed="false">${toolbarHoverBubblesMarkup()}${toolbarMotionIconMarkup('comment', theme)}<span class="pop-widget-badge" data-comment-count>${commentCount > 99 ? '99+' : commentCount}</span></button>
-        <div class="pop-widget-share-wrap"><button class="pop-widget-btn pop-widget-share" type="button" data-widget-share data-active="false" aria-label="分享" aria-pressed="false">${toolbarHoverBubblesMarkup()}${toolbarMotionIconMarkup('share', theme)}</button><div class="pop-widget-share-menu" hidden><button type="button" data-widget-copy="${work.id}"><span>⌁</span>复制链接</button><button type="button" data-widget-infoflow><img src="./assets/sidebar/icon-infoflow.png" alt="" />分享到如流</button></div></div>
+        <div class="pop-widget-share-wrap"><button class="pop-widget-btn pop-widget-share" type="button" data-widget-share data-active="false" aria-label="分享" aria-pressed="false">${toolbarHoverBubblesMarkup()}${toolbarMotionIconMarkup('share', theme)}</button><div class="pop-widget-share-menu" hidden><button type="button" data-widget-copy="${work.id}"><img src="./assets/sidebar/icon-link.svg" alt="" />复制链接</button><button type="button" data-widget-infoflow><img src="./assets/sidebar/icon-infoflow.png" alt="" />分享到如流</button></div></div>
         <button class="pop-widget-btn pop-widget-like ${liked ? 'liked' : ''}" type="button" data-widget-like="${work.id}" data-active="${liked}" aria-label="点赞" aria-pressed="${liked}">${toolbarHoverBubblesMarkup()}${toolbarMotionIconMarkup('like', theme)}<span class="pop-widget-badge" data-widget-like-count>${count}</span></button>
       </div>
       <div class="pop-widget-divider"></div>
@@ -3693,5 +4379,111 @@ window.addEventListener('message', (event) => {
   if (event.data.action === 'open-comment') openInboxComment(event.data.workId);
   if (event.data.action === 'open-work') navigateRoute(`/works/${event.data.workId || '7188'}`);
 });
+
+// ===== 2026-10-30 第8轮：作品卡片悬停聚焦 =====
+// 悬停卡片：放大并提起、封面向下滚动（样式见 styles.css 第8轮）；
+// 其余卡片：沿远离它的方向被挤开、轻微缩小，并按距离降低透明度。
+// 只用 transform / opacity，不改布局，所以放大的卡片不会从鼠标下面移走。
+const CARD_FOCUS = {
+  scale: 1.07,
+  nearOpacity: 0.9,
+  farOpacity: 0.2,
+  nearScale: 0.985,
+  farScale: 0.95,
+  pushRatio: 0.04,
+  pushMax: 36,
+  reach: 4,
+  releaseDelay: 60,
+};
+let cardFocusGrid = null;
+let cardFocusCard = null;
+let cardFocusReleaseTimer = 0;
+
+function cardFocusEnabled() {
+  return window.matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches;
+}
+
+function resetCardFocusStyle(card) {
+  card.classList.remove('is-focused');
+  ['--fx', '--fy', '--fs', '--fo'].forEach((name) => card.style.removeProperty(name));
+}
+
+function clearCardFocus() {
+  window.clearTimeout(cardFocusReleaseTimer);
+  cardFocusReleaseTimer = 0;
+  if (cardFocusGrid) {
+    cardFocusGrid.removeAttribute('data-card-focus');
+    cardFocusGrid.querySelectorAll('.work-card').forEach(resetCardFocusStyle);
+  }
+  cardFocusGrid = null;
+  cardFocusCard = null;
+}
+
+function focusCard(card) {
+  const gridEl = card.closest('.masonry');
+  if (!gridEl) return;
+  window.clearTimeout(cardFocusReleaseTimer);
+  cardFocusReleaseTimer = 0;
+  if (cardFocusGrid && cardFocusGrid !== gridEl) clearCardFocus();
+  cardFocusGrid = gridEl;
+  cardFocusCard = card;
+
+  // 用 offset* 取未变换的布局位置，动画过程中的位移不会影响距离计算。
+  const centerOf = (el) => ({ x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight / 2 });
+  const origin = centerOf(card);
+  const { columnGutter } = getHomeMasonryColumns(gridEl.clientWidth);
+  const unit = (card.offsetWidth + columnGutter) * CARD_FOCUS.reach;
+  const lerp = (from, to, t) => from + (to - from) * t;
+
+  gridEl.querySelectorAll('.work-card').forEach((item) => {
+    if (item === card) {
+      item.classList.add('is-focused');
+      item.style.setProperty('--fx', '0px');
+      item.style.setProperty('--fy', '0px');
+      item.style.setProperty('--fs', String(CARD_FOCUS.scale));
+      item.style.setProperty('--fo', '1');
+      return;
+    }
+    item.classList.remove('is-focused');
+    if (item.classList.contains('share-open')) {
+      resetCardFocusStyle(item);
+      return;
+    }
+    const center = centerOf(item);
+    const dx = center.x - origin.x;
+    const dy = center.y - origin.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const t = Math.min(1, dist / unit);
+    const push = Math.min(dist * CARD_FOCUS.pushRatio, CARD_FOCUS.pushMax);
+    item.style.setProperty('--fx', `${((dx / dist) * push).toFixed(1)}px`);
+    item.style.setProperty('--fy', `${((dy / dist) * push).toFixed(1)}px`);
+    item.style.setProperty('--fs', lerp(CARD_FOCUS.nearScale, CARD_FOCUS.farScale, t).toFixed(3));
+    item.style.setProperty('--fo', lerp(CARD_FOCUS.nearOpacity, CARD_FOCUS.farOpacity, t).toFixed(3));
+  });
+  gridEl.setAttribute('data-card-focus', '');
+}
+
+document.addEventListener('pointerover', (event) => {
+  if (event.pointerType === 'touch' || !(event.target instanceof Element)) return;
+  const card = event.target.closest('.masonry .work-card');
+  if (!card || !cardFocusEnabled()) return;
+  if (card === cardFocusCard && card.isConnected) {
+    window.clearTimeout(cardFocusReleaseTimer);
+    cardFocusReleaseTimer = 0;
+    return;
+  }
+  focusCard(card);
+});
+
+document.addEventListener('pointerout', (event) => {
+  if (!cardFocusCard) return;
+  const next = event.relatedTarget instanceof Element ? event.relatedTarget.closest('.masonry .work-card') : null;
+  if (next) return;
+  window.clearTimeout(cardFocusReleaseTimer);
+  cardFocusReleaseTimer = window.setTimeout(clearCardFocus, CARD_FOCUS.releaseDelay);
+});
+
+window.addEventListener('hashchange', clearCardFocus);
+window.addEventListener('resize', clearCardFocus);
 
 renderRoute();
